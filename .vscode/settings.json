@@ -1,0 +1,18 @@
+{
+  "git.ignoreLimitWarning": true,
+  "hardhat.config": "contracts/hardhat.config.ts",
+  "solidity.remappings": [
+    "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/"
+  ],
+  "solidity.remappingsUnix": [
+    "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/"
+  ],
+  "solidity.remappingsWindows": [
+    "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/"
+  ],
+  "solidity.compileUsingRemoteVersion": "v0.8.28+commit.7893614a",
+  "solidity.packageDefaultDependenciesContractsDirectory": "contracts",
+  "solidity.packageDefaultDependenciesDirectory": "node_modules",
+  "solidity.validationDelay": 1500,
+  "solidity.enabledAsYouTypeCompilationErrorCheck": true
+}
