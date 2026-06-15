@@ -254,7 +254,111 @@ export async function applyBoost(params: {
     update: { totalRevenue: { increment: params.amount } },
   });
 
+  await applyBoostPlaybackEffect(params.roomId, params.queueItemId, params.type);
+
   return item;
+}
+
+/** Tier-specific playback: only SUPER interrupts; PLAY_NEXT starts if room is idle. */
+async function applyBoostPlaybackEffect(roomId: string, queueItemId: string, type: BoostType) {
+  switch (type) {
+    case BoostType.BOOST:
+    case BoostType.PRIORITY_BOOST:
+      return;
+    case BoostType.PLAY_NEXT:
+      await startTopQueuedIfIdle(roomId, queueItemId);
+      return;
+    case BoostType.SUPER_PRIORITY:
+      await forcePlayQueueItem(roomId, queueItemId);
+      return;
+  }
+}
+
+/** Start playback when nothing is playing, only if the given item is first in queue. */
+async function startTopQueuedIfIdle(roomId: string, queueItemId: string) {
+  const currentPlaying = await prisma.queueItem.findFirst({
+    where: { roomId, status: QueueItemStatus.PLAYING },
+  });
+  if (currentPlaying) return null;
+
+  const [topQueued] = await prisma.queueItem.findMany({
+    where: { roomId, status: QueueItemStatus.QUEUED },
+    orderBy: [{ boostLevel: "desc" }, { voteScore: "desc" }, { createdAt: "asc" }],
+    take: 1,
+  });
+  if (!topQueued || topQueued.id !== queueItemId) return null;
+
+  await prisma.queueItem.update({
+    where: { id: queueItemId },
+    data: { status: QueueItemStatus.PLAYING },
+  });
+
+  await prisma.playbackState.upsert({
+    where: { roomId },
+    create: {
+      roomId,
+      currentItemId: queueItemId,
+      isPlaying: true,
+      currentTime: 0,
+      startedAt: new Date(),
+    },
+    update: {
+      currentItemId: queueItemId,
+      isPlaying: true,
+      currentTime: 0,
+      startedAt: new Date(),
+    },
+  });
+
+  return topQueued;
+}
+
+/** Stop whatever is playing and immediately play the boosted item. */
+export async function forcePlayQueueItem(roomId: string, queueItemId: string) {
+  const boosted = await prisma.queueItem.findUnique({ where: { id: queueItemId } });
+  if (!boosted || boosted.roomId !== roomId) throw new Error("Queue item not found");
+  if (boosted.status === QueueItemStatus.REMOVED || boosted.status === QueueItemStatus.PLAYED) {
+    throw new Error("Cannot boost this item");
+  }
+
+  if (boosted.status === QueueItemStatus.PLAYING) {
+    return boosted;
+  }
+
+  const currentPlaying = await prisma.queueItem.findFirst({
+    where: { roomId, status: QueueItemStatus.PLAYING },
+  });
+
+  if (currentPlaying) {
+    await prisma.queueItem.update({
+      where: { id: currentPlaying.id },
+      data: { status: QueueItemStatus.QUEUED },
+    });
+  }
+
+  await prisma.queueItem.update({
+    where: { id: queueItemId },
+    data: { status: QueueItemStatus.PLAYING },
+  });
+
+  await prisma.playbackState.upsert({
+    where: { roomId },
+    create: {
+      roomId,
+      currentItemId: queueItemId,
+      isPlaying: true,
+      currentTime: 0,
+      startedAt: new Date(),
+    },
+    update: {
+      currentItemId: queueItemId,
+      isPlaying: true,
+      currentTime: 0,
+      startedAt: new Date(),
+    },
+  });
+
+  return boosted;
 }
 
 export async function advancePlayback(roomId: string) {

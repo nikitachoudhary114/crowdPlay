@@ -20,6 +20,37 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { YouTubeSearchResult } from "@/lib/youtube";
+import type { RoomStateDTO } from "@/lib/queue";
+
+function getBoostToast(boostType: BoostType, roomState: RoomStateDTO | null, queueItemId: string) {
+  const position = roomState?.queue?.findIndex((q) => q.id === queueItemId) ?? -1;
+  switch (boostType) {
+    case "SUPER_PRIORITY":
+      return {
+        title: "Now playing!",
+        description: "Your song is playing for everyone in the room.",
+      };
+    case "PLAY_NEXT":
+      return {
+        title: "Up next",
+        description: roomState?.nowPlaying
+          ? "Your song will play right after the current track."
+          : "Your song is now first in the queue.",
+      };
+    case "PRIORITY_BOOST":
+      return {
+        title: "Priority boost applied",
+        description:
+          position >= 0 ? `Moved to #${position + 1} in queue` : "Song moved higher in the queue",
+      };
+    default:
+      return {
+        title: "Song boosted",
+        description:
+          position >= 0 ? `Moved to #${position + 1} in queue` : "Song moved higher in the queue",
+      };
+  }
+}
 
 export function RoomView({ roomCode }: { roomCode: string }) {
   const { data: session } = useSession();
@@ -96,8 +127,9 @@ export function RoomView({ roomCode }: { roomCode: string }) {
       }
 
       if (data.demo) {
-        await refreshState();
-        toast({ title: "Song boosted!", description: "Demo mode — boost applied", variant: "success" });
+        if (data.state) applyRoomState(data.state);
+        else await refreshState();
+        toast({ ...getBoostToast(boostType, data.state ?? state, queueItemId), variant: "success" });
         setBoostTarget(null);
         return;
       }
@@ -135,21 +167,10 @@ export function RoomView({ roomCode }: { roomCode: string }) {
           });
           const verifyData = await verifyRes.json();
           if (verifyRes.ok) {
+            const nextState = verifyData.state ?? state;
             if (verifyData.state) applyRoomState(verifyData.state);
             else await refreshState();
-            const boosted = verifyData.state?.queue?.find(
-              (q: { id: string }) => q.id === queueItemId
-            );
-            const position =
-              verifyData.state?.queue?.findIndex((q: { id: string }) => q.id === queueItemId) ?? -1;
-            toast({
-              title: "Payment successful!",
-              description:
-                position >= 0
-                  ? `Song boosted to #${position + 1} in queue (boost level ${boosted?.boostLevel ?? "—"})`
-                  : "Song boosted in queue",
-              variant: "success",
-            });
+            toast({ ...getBoostToast(boostType, nextState, queueItemId), variant: "success" });
             setBoostTarget(null);
           } else {
             toast({
@@ -201,11 +222,10 @@ export function RoomView({ roomCode }: { roomCode: string }) {
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardContent className="p-0">
-                <div className="aspect-video w-full overflow-hidden rounded-2xl bg-black">
-                  {state?.nowPlaying ? (
-                    <div ref={containerRef} className="h-full w-full" />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-white/40">
+                <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black">
+                  <div ref={containerRef} className="h-full w-full" />
+                  {!state?.nowPlaying && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black text-white/40">
                       No media playing — add songs to the queue!
                     </div>
                   )}

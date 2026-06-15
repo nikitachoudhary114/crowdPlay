@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 import {
   Toast,
   ToastClose,
@@ -25,7 +25,7 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-export function ToasterProvider({ children }: { children: React.ReactNode }) {
+export function ToasterProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const toast = useCallback(
