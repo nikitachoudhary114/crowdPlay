@@ -10,21 +10,21 @@ import * as Contracts from "./index.js";
 
 declare module "@nomicfoundation/hardhat-ethers/types" {
   interface HardhatEthersHelpers extends HardhatEthersHelpersBase {
-  getContractFactory(name: 'CrowdToken', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.CrowdToken__factory>
-getContractFactory(name: 'CrowdMembership', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.CrowdMembership__factory>
+  getContractFactory(name: 'CrowdMembership', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.CrowdMembership__factory>
 getContractFactory(name: 'QueueBoost', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.QueueBoost__factory>
+getContractFactory(name: 'CrowdToken', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.CrowdToken__factory>
 
-  getContractAt(name: 'CrowdToken', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.CrowdToken>
-getContractAt(name: 'CrowdMembership', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.CrowdMembership>
+  getContractAt(name: 'CrowdMembership', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.CrowdMembership>
 getContractAt(name: 'QueueBoost', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.QueueBoost>
+getContractAt(name: 'CrowdToken', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.CrowdToken>
 
-  deployContract(name: 'CrowdToken', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.CrowdToken>
-deployContract(name: 'CrowdMembership', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.CrowdMembership>
+  deployContract(name: 'CrowdMembership', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.CrowdMembership>
 deployContract(name: 'QueueBoost', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.QueueBoost>
+deployContract(name: 'CrowdToken', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.CrowdToken>
 
-  deployContract(name: 'CrowdToken', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.CrowdToken>
-deployContract(name: 'CrowdMembership', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.CrowdMembership>
+  deployContract(name: 'CrowdMembership', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.CrowdMembership>
 deployContract(name: 'QueueBoost', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.QueueBoost>
+deployContract(name: 'CrowdToken', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.CrowdToken>
 
     // default types
     getContractFactory(

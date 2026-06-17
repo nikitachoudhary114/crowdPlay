@@ -6,11 +6,27 @@ import { config as loadEnv } from "dotenv";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { network } from "hardhat";
+import type { ContractFactory, Signer } from "ethers";
 
 const projectRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 loadEnv({ path: path.join(projectRoot, ".env") });
 
-const DEPLOY_GAS_LIMIT = 4_000_000n;
+async function deployEstimated(
+  factory: ContractFactory,
+  deployer: Signer,
+  args: unknown[] = []
+) {
+  const deployTx = await factory.getDeployTransaction(...args);
+  deployTx.from = await deployer.getAddress();
+  const provider = deployer.provider;
+  if (!provider) throw new Error("Deployer has no provider");
+  const estimated = await provider.estimateGas(deployTx);
+  const gasLimit = (estimated * 125n) / 100n;
+  console.log(`  gas estimate: ${estimated} → limit: ${gasLimit}`);
+  const contract = await factory.connect(deployer).deploy(...args, { gasLimit });
+  await contract.waitForDeployment();
+  return contract;
+}
 
 async function main() {
   const crowdToken = process.env.NEXT_PUBLIC_CROWD_TOKEN_ADDRESS;
@@ -30,13 +46,9 @@ async function main() {
   }
 
   console.log("Deploying QueueBoost only…");
-  const QueueBoost = await ethers.deployContract(
-    "QueueBoost",
-    [crowdToken, deployer.address],
-    { gasLimit: DEPLOY_GAS_LIMIT }
-  );
-  await QueueBoost.waitForDeployment();
-  const addr = await QueueBoost.getAddress();
+  const factory = await ethers.getContractFactory("QueueBoost");
+  const contract = await deployEstimated(factory, deployer, [crowdToken, deployer.address]);
+  const addr = await contract.getAddress();
 
   console.log("\n--- Update .env ---");
   console.log(`NEXT_PUBLIC_QUEUE_BOOST_ADDRESS="${addr}"`);

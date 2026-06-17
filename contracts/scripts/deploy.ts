@@ -1,7 +1,31 @@
 import { network } from "hardhat";
+import type { ContractFactory, Signer } from "ethers";
 
-const MIN_BALANCE_MATIC = 0.05;
-const DEPLOY_GAS_LIMIT = 4_000_000n;
+const MIN_BALANCE_MATIC = 0.03;
+
+async function deployEstimated(
+  factory: ContractFactory,
+  deployer: Signer,
+  args: unknown[] = []
+) {
+  const deployTx = await factory.getDeployTransaction(...args);
+  deployTx.from = await deployer.getAddress();
+
+  const provider = deployer.provider;
+  if (!provider) throw new Error("Deployer has no provider");
+
+  const estimated = await provider.estimateGas(deployTx);
+  const gasLimit = (estimated * 125n) / 100n; // 25% buffer
+  const feeData = await provider.getFeeData();
+  const gasPrice = feeData.gasPrice ?? feeData.maxFeePerGas ?? 30_000_000_000n;
+  const costMatic = Number(gasLimit * gasPrice) / 1e18;
+
+  console.log(`  gas estimate: ${estimated} → limit: ${gasLimit} (~${costMatic.toFixed(4)} MATIC)`);
+
+  const contract = await factory.connect(deployer).deploy(...args, { gasLimit });
+  await contract.waitForDeployment();
+  return contract;
+}
 
 async function main() {
   const connection = await network.connect();
@@ -16,8 +40,8 @@ async function main() {
 
   if (balanceMatic < MIN_BALANCE_MATIC) {
     console.error(
-      `Insufficient MATIC. You have ${balanceMatic.toFixed(4)} but need at least ~${MIN_BALANCE_MATIC} MATIC for all 3 contracts.\n` +
-        "Get free test MATIC: https://faucet.polygon.technology/ (select Polygon Amoy)\n"
+      `Insufficient MATIC. You have ${balanceMatic.toFixed(4)} — get more from:\n` +
+        "https://faucet.polygon.technology/ (Polygon Amoy)\n"
     );
     process.exitCode = 1;
     return;
@@ -33,20 +57,19 @@ async function main() {
     console.log("Skipping CrowdToken — using existing:", crowdTokenAddress);
   } else {
     console.log("Deploying CrowdToken…");
-    const CrowdToken = await ethers.deployContract("CrowdToken", [], { gasLimit: DEPLOY_GAS_LIMIT });
-    await CrowdToken.waitForDeployment();
-    crowdTokenAddress = await CrowdToken.getAddress();
+    const CrowdToken = await ethers.getContractFactory("CrowdToken");
+    const token = await deployEstimated(CrowdToken, deployer);
+    crowdTokenAddress = await token.getAddress();
     console.log("CrowdToken:", crowdTokenAddress);
   }
 
   console.log("Deploying QueueBoost…");
-  const QueueBoost = await ethers.deployContract(
-    "QueueBoost",
-    [crowdTokenAddress, deployer.address],
-    { gasLimit: DEPLOY_GAS_LIMIT }
-  );
-  await QueueBoost.waitForDeployment();
-  const queueBoostAddress = await QueueBoost.getAddress();
+  const QueueBoostFactory = await ethers.getContractFactory("QueueBoost");
+  const queueBoost = await deployEstimated(QueueBoostFactory, deployer, [
+    crowdTokenAddress,
+    deployer.address,
+  ]);
+  const queueBoostAddress = await queueBoost.getAddress();
   console.log("QueueBoost:", queueBoostAddress);
 
   const skipNft = process.env.DEPLOY_SKIP_NFT === "1" && process.env.NEXT_PUBLIC_NFT_MEMBERSHIP_ADDRESS;
@@ -56,14 +79,14 @@ async function main() {
     console.log("Skipping CrowdMembership — using existing:", membershipAddress);
   } else {
     console.log("Deploying CrowdMembership…");
-    const CrowdMembership = await ethers.deployContract("CrowdMembership", [], {
-      gasLimit: DEPLOY_GAS_LIMIT,
-    });
-    await CrowdMembership.waitForDeployment();
-    membershipAddress = await CrowdMembership.getAddress();
+    const MembershipFactory = await ethers.getContractFactory("CrowdMembership");
+    const membership = await deployEstimated(MembershipFactory, deployer);
+    membershipAddress = await membership.getAddress();
     console.log("CrowdMembership:", membershipAddress);
   }
 
+  const remaining = Number(ethers.formatEther(await ethers.provider.getBalance(deployer.address)));
+  console.log("\nRemaining balance:", remaining.toFixed(4), "MATIC");
   console.log("\n--- Add to .env ---");
   console.log(`NEXT_PUBLIC_CROWD_TOKEN_ADDRESS="${crowdTokenAddress}"`);
   console.log(`NEXT_PUBLIC_QUEUE_BOOST_ADDRESS="${queueBoostAddress}"`);
