@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { getCreatorEarnings, getRevenueSplit, getRoomRevenueFromBoosts } from "@/lib/revenue";
 
 export const dynamic = "force-dynamic";
 
@@ -10,8 +11,17 @@ export async function GET() {
 
   const rooms = await prisma.room.findMany({
     where: { ownerId: session.user.id },
-    include: { analytics: true },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      name: true,
+      code: true,
+      isActive: true,
+    },
   });
+
+  const revenueByRoom = await getRoomRevenueFromBoosts(rooms.map((r) => r.id));
+  const split = await getRevenueSplit();
 
   const boosts = await prisma.boost.aggregate({
     where: { room: { ownerId: session.user.id } },
@@ -37,10 +47,21 @@ export async function GET() {
     select: { id: true, name: true, image: true },
   });
 
+  const totalBoostAmount = boosts._sum.amount ?? 0;
+  const totalTipAmount = tips._sum.amount ?? 0;
+  const creatorEarnings =
+    (await getCreatorEarnings(totalBoostAmount)) + (await getCreatorEarnings(totalTipAmount));
+
   return NextResponse.json({
-    totalEarnings: (boosts._sum.amount ?? 0) * 0.7 + (tips._sum.amount ?? 0) * 0.7,
+    totalEarnings: creatorEarnings,
+    totalRevenue: totalBoostAmount + totalTipAmount,
     boostCount: boosts._count.id,
-    rooms,
+    splitPercent: split.creatorSharePercent,
+    rooms: rooms.map((room) => ({
+      ...room,
+      grossRevenue: revenueByRoom.get(room.id) ?? 0,
+      creatorRevenue: (revenueByRoom.get(room.id) ?? 0) * (split.creatorSharePercent / 100),
+    })),
     topSupporters: topSupporters.map((s) => ({
       user: supporterUsers.find((u) => u.id === s.userId),
       amount: s._sum.amount,

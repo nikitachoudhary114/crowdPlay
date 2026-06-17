@@ -12,6 +12,7 @@ contract QueueBoost is Ownable, ReentrancyGuard {
     uint256 public boostPrice = 5 ether;
     uint256 public queueJumpPrice = 20 ether;
     uint256 public playNextPrice = 50 ether;
+    uint256 public superPriorityPrice = 100 ether;
 
     uint256 public constant CREATOR_SHARE = 70;
     uint256 public constant PLATFORM_SHARE = 30;
@@ -76,6 +77,7 @@ contract QueueBoost is Ownable, ReentrancyGuard {
         if (t == keccak256("VOTE_BOOST")) return boostPrice;
         if (t == keccak256("QUEUE_JUMP")) return queueJumpPrice;
         if (t == keccak256("PLAY_NEXT")) return playNextPrice;
+        if (t == keccak256("SUPER_PRIORITY")) return superPriorityPrice;
         revert("Invalid boost type");
     }
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useSocket } from "@/hooks/use-socket";
@@ -14,9 +15,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDuration } from "@/lib/utils";
 import { BOOST_PRICES } from "@/lib/constants";
 import { openRazorpayCheckout, type BoostType } from "@/lib/razorpay-checkout";
-import { BoostDialog } from "@/components/room/BoostDialog";
+import { BoostDialog, type PaymentMethod } from "@/components/room/BoostDialog";
+import { CryptoBoostOverlay } from "@/components/room/CryptoBoostOverlay";
 import {
-  ThumbsUp, ThumbsDown, Search, Send, SkipForward, Trash2, Users, Zap, Loader2,
+  ThumbsUp, ThumbsDown, Search, Send, SkipForward, Trash2, Users, Zap, Loader2, DoorClosed,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { YouTubeSearchResult } from "@/lib/youtube";
@@ -63,6 +65,15 @@ export function RoomView({ roomCode }: { roomCode: string }) {
   const [guestName] = useState("Guest");
   const [boostTarget, setBoostTarget] = useState<{ id: string; title: string } | null>(null);
   const [boostLoading, setBoostLoading] = useState(false);
+  const [cryptoBoost, setCryptoBoost] = useState<{ queueItemId: string; boostType: BoostType } | null>(null);
+  const [cryptoConfigured, setCryptoConfigured] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/payments/crypto?roomCode=${roomCode}`)
+      .then((r) => r.json())
+      .then((d) => setCryptoConfigured(!!d.configured))
+      .catch(() => setCryptoConfigured(false));
+  }, [roomCode]);
 
   useEffect(() => {
     if (!session?.user) {
@@ -74,8 +85,8 @@ export function RoomView({ roomCode }: { roomCode: string }) {
 
   const userId = session?.user?.id;
   const {
-    state, messages, activeUsers, connected, error,
-    addToQueue, vote, sendMessage, trackEnded, adminSkip, adminRemove, refreshState, applyRoomState,
+    state, messages, activeUsers, connected, error, roomEnded,
+    addToQueue, vote, sendMessage, trackEnded, adminSkip, adminRemove, adminEndRoom, refreshState, applyRoomState,
   } = useSocket(roomCode, userId, guestId ?? undefined);
 
   const isAdmin = state?.room.ownerId === userId;
@@ -111,7 +122,17 @@ export function RoomView({ roomCode }: { roomCode: string }) {
     else toast({ title: "Added to queue", variant: "success" });
   }
 
-  async function handleBoost(queueItemId: string, boostType: BoostType) {
+  async function handleBoost(queueItemId: string, boostType: BoostType, method: PaymentMethod) {
+    if (method === "CRYPTO") {
+      if (!session?.user) {
+        toast({ title: "Sign in required", description: "Log in to pay with CROWD tokens", variant: "error" });
+        return;
+      }
+      setBoostTarget(null);
+      setCryptoBoost({ queueItemId, boostType });
+      return;
+    }
+
     setBoostLoading(true);
     try {
       const res = await fetch("/api/payments/razorpay", {
@@ -188,6 +209,37 @@ export function RoomView({ roomCode }: { roomCode: string }) {
     }
   }
 
+  async function handleEndRoom() {
+    if (!confirm("End this room for everyone? Playback will stop and the room code will no longer work.")) {
+      return;
+    }
+    const result = await adminEndRoom();
+    if (result.success) {
+      toast({ title: "Room ended", description: "All participants have been notified.", variant: "success" });
+    } else {
+      toast({ title: "Could not end room", description: result.error, variant: "error" });
+    }
+  }
+
+  if (roomEnded) {
+    return (
+      <div className="gradient-bg flex min-h-screen flex-col items-center justify-center px-4">
+        <Navbar />
+        <Card className="mt-20 max-w-md text-center">
+          <CardContent className="p-8">
+            <DoorClosed className="mx-auto mb-4 h-12 w-12 text-white/40" />
+            <h1 className="text-2xl font-bold">Room ended</h1>
+            <p className="mt-2 text-white/60">{error ?? "This session is no longer active."}</p>
+            <div className="mt-6 flex justify-center gap-3">
+              <Link href="/"><Button variant="outline">Home</Button></Link>
+              <Link href="/room/create"><Button variant="glow">Create new room</Button></Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (!connected && !state) {
     return (
       <div className="flex min-h-screen items-center justify-center gradient-bg">
@@ -209,9 +261,14 @@ export function RoomView({ roomCode }: { roomCode: string }) {
             <Badge variant="secondary"><Users className="mr-1 h-3 w-3" />{activeUsers}</Badge>
             {state?.room.queueLocked && <Badge variant="warning">Queue Locked</Badge>}
             {isAdmin && (
-              <Button variant="outline" size="sm" onClick={() => adminSkip()}>
-                <SkipForward className="mr-1 h-4 w-4" /> Skip
-              </Button>
+              <>
+                <Button variant="outline" size="sm" onClick={() => adminSkip()}>
+                  <SkipForward className="mr-1 h-4 w-4" /> Skip
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleEndRoom} className="border-red-500/30 text-red-300 hover:bg-red-500/10">
+                  <DoorClosed className="mr-1 h-4 w-4" /> End Room
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -430,8 +487,31 @@ export function RoomView({ roomCode }: { roomCode: string }) {
         <BoostDialog
           songTitle={boostTarget.title}
           loading={boostLoading}
+          cryptoConfigured={cryptoConfigured}
           onClose={() => !boostLoading && setBoostTarget(null)}
-          onSelect={(boostType) => handleBoost(boostTarget.id, boostType)}
+          onSelect={(boostType, method) => handleBoost(boostTarget.id, boostType, method)}
+        />
+      )}
+
+      {cryptoBoost && (
+        <CryptoBoostOverlay
+          roomCode={roomCode}
+          queueItemId={cryptoBoost.queueItemId}
+          boostType={cryptoBoost.boostType}
+          onClose={() => setCryptoBoost(null)}
+          onError={(msg) => {
+            toast({ title: "Crypto payment failed", description: msg, variant: "error" });
+            setCryptoBoost(null);
+          }}
+          onSuccess={(nextState) => {
+            if (nextState) applyRoomState(nextState as RoomStateDTO);
+            else refreshState();
+            toast({
+              ...getBoostToast(cryptoBoost.boostType, (nextState as RoomStateDTO) ?? state, cryptoBoost.queueItemId),
+              variant: "success",
+            });
+            setCryptoBoost(null);
+          }}
         />
       )}
     </div>

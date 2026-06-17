@@ -23,6 +23,7 @@ export function useSocket(roomCode: string, userId?: string, guestId?: string) {
   const [activeUsers, setActiveUsers] = useState(0);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [roomEnded, setRoomEnded] = useState(false);
 
   useEffect(() => {
     const s = getSocket();
@@ -38,6 +39,11 @@ export function useSocket(roomCode: string, userId?: string, guestId?: string) {
     const onChatMessage = (msg: ChatMessageDTO) => setMessages((prev) => [...prev, msg]);
     const onActiveUsers = (count: number) => setActiveUsers(count);
     const onError = (data: { message: string }) => setError(data.message);
+    const onRoomEnded = (data: { message: string }) => {
+      setRoomEnded(true);
+      setError(data.message);
+      setState(null);
+    };
 
     s.on("connect", onConnect);
     s.on("room-state", onRoomState);
@@ -45,6 +51,7 @@ export function useSocket(roomCode: string, userId?: string, guestId?: string) {
     s.on("chat-message", onChatMessage);
     s.on("active-users", onActiveUsers);
     s.on("error", onError);
+    s.on("room-ended", onRoomEnded);
 
     if (s.connected) onConnect();
 
@@ -56,6 +63,7 @@ export function useSocket(roomCode: string, userId?: string, guestId?: string) {
       s.off("chat-message", onChatMessage);
       s.off("active-users", onActiveUsers);
       s.off("error", onError);
+      s.off("room-ended", onRoomEnded);
     };
   }, [roomCode, userId, guestId]);
 
@@ -109,6 +117,14 @@ export function useSocket(roomCode: string, userId?: string, guestId?: string) {
     [roomCode, userId]
   );
 
+  const adminEndRoom = useCallback(
+    () =>
+      new Promise<{ success: boolean; error?: string }>((resolve) => {
+        getSocket().emit("admin-end-room", { roomCode, userId }, resolve);
+      }),
+    [roomCode, userId]
+  );
+
   const refreshState = useCallback(async () => {
     try {
       const res = await fetch(`/api/rooms/${roomCode}`);
@@ -133,6 +149,7 @@ export function useSocket(roomCode: string, userId?: string, guestId?: string) {
     activeUsers,
     connected,
     error,
+    roomEnded,
     addToQueue,
     vote,
     sendMessage,
@@ -140,6 +157,7 @@ export function useSocket(roomCode: string, userId?: string, guestId?: string) {
     syncPlayback,
     adminSkip,
     adminRemove,
+    adminEndRoom,
     refreshState,
     applyRoomState,
   };

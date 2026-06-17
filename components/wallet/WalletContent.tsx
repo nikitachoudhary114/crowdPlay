@@ -60,11 +60,20 @@ export function WalletContent() {
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Connect Wallet</CardTitle>
-            <CardDescription>MetaMask on Polygon</CardDescription>
+            <CardDescription>MetaMask on Polygon Amoy testnet</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <ConnectButton />
             {isConnected && <p className="text-sm text-white/50">Connected: {address}</p>}
+            <div className="rounded-lg border border-fuchsia-500/20 bg-fuchsia-500/5 p-3 text-sm text-white/60">
+              <p className="font-medium text-white/80">How to pay with CROWD</p>
+              <ol className="mt-2 list-decimal space-y-1 pl-4">
+                <li>Switch wallet to Polygon Amoy (chain 80002)</li>
+                <li>Get test MATIC from a Polygon Amoy faucet</li>
+                <li>Ask the deployer to send you CROWD tokens (ERC-20)</li>
+                <li>Open a room, boost a song, choose <strong>CROWD (Web3)</strong></li>
+              </ol>
+            </div>
             <div className="text-xs text-white/30">
               <p>Token: {CONTRACT_ADDRESSES.CROWD_TOKEN}</p>
               <p>QueueBoost: {CONTRACT_ADDRESSES.QUEUE_BOOST}</p>

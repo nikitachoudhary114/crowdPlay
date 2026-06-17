@@ -11,6 +11,7 @@ export const CROWD_PRICES = {
   VOTE_BOOST: 5,
   QUEUE_JUMP: 20,
   PLAY_NEXT: 50,
+  SUPER_PRIORITY: 100,
 } as const;
 
 export const BOOST_LEVELS: Record<string, number> = {

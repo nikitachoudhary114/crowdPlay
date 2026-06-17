@@ -55,3 +55,14 @@ export async function getCachedRoomState<T>(roomCode: string): Promise<T | null>
   const data = await redis.get(`room:${roomCode}`);
   return data ? (JSON.parse(data) as T) : null;
 }
+
+export async function cacheJson<T>(key: string, value: T, ttlSeconds = 30): Promise<void> {
+  const redis = getRedis();
+  await redis.set(key, JSON.stringify(value), "EX", ttlSeconds);
+}
+
+export async function getCachedJson<T>(key: string): Promise<T | null> {
+  const redis = getRedis();
+  const data = await redis.get(key);
+  return data ? (JSON.parse(data) as T) : null;
+}

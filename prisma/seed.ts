@@ -13,8 +13,13 @@ async function main() {
       priorityBoostPrice: 25,
       playNextPrice: 50,
       superPriorityPrice: 100,
+      creatorSharePercent: 70,
+      platformSharePercent: 30,
     },
-    update: {},
+    update: {
+      creatorSharePercent: 70,
+      platformSharePercent: 30,
+    },
   });
 
   await prisma.platformAnalytics.upsert({

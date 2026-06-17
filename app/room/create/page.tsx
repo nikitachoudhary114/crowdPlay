@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Navbar } from "@/components/layout/Navbar";
@@ -16,6 +16,10 @@ export default function CreateRoomPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    router.prefetch("/room/join");
+  }, [router]);
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -28,7 +32,7 @@ export default function CreateRoomPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      router.push(`/room/${data.room.code}`);
+      router.replace(`/room/${data.room.code}`);
     } catch (err) {
       setError((err as Error).message);
     } finally {

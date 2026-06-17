@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getRoomState } from "@/lib/queue";
+import { getRoomState, endRoom } from "@/lib/queue";
 import { getSession } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -49,7 +49,13 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const room = await prisma.room.findUnique({ where: { code: code.toUpperCase() } });
   if (!room) return NextResponse.json({ error: "Room not found" }, { status: 404 });
   if (room.ownerId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!room.isActive) return NextResponse.json({ error: "Room already ended" }, { status: 400 });
 
-  await prisma.room.update({ where: { id: room.id }, data: { isActive: false } });
+  await endRoom(room.id);
+
+  const { getIO } = await import("@/server/socket");
+  const io = getIO();
+  io?.to(code.toUpperCase()).emit("room-ended", { message: "The host has ended this room." });
+
   return NextResponse.json({ success: true });
 }

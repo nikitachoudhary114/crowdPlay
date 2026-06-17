@@ -375,11 +375,13 @@ model ProposalVote {
 }
 
 model GovernanceConfig {
-  id               String @id @default("config")
-  cooldownMinutes  Int    @default(20)
-  maxQueueSize     Int    @default(50)
-  boostPrice       Float  @default(10)
-  priorityBoostPrice Float @default(25)
-  playNextPrice    Float  @default(50)
-  superPriorityPrice Float @default(100)
+  id                 String @id @default("config")
+  cooldownMinutes    Int    @default(20)
+  maxQueueSize       Int    @default(50)
+  boostPrice         Float  @default(10)
+  priorityBoostPrice Float  @default(25)
+  playNextPrice      Float  @default(50)
+  superPriorityPrice Float  @default(100)
+  creatorSharePercent  Int  @default(70)
+  platformSharePercent Int  @default(30)
 }

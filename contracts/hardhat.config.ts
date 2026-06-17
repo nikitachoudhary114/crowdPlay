@@ -34,6 +34,7 @@ export default defineConfig({
       url: configVariable("POLYGON_AMOY_RPC_URL"),
       accounts: [configVariable("DEPLOYER_PRIVATE_KEY")],
       chainId: 80002,
+      timeout: 120_000,
     },
   },
 });

@@ -15,7 +15,8 @@
     "docker:logs": "docker compose logs -f",
     "contracts:compile": "hardhat compile --config contracts/hardhat.config.ts",
     "contracts:clean": "hardhat clean --config contracts/hardhat.config.ts",
-    "contracts:deploy:amoy": "hardhat run contracts/scripts/deploy.ts --config contracts/hardhat.config.ts --network polygonAmoy"
+    "contracts:deploy:amoy": "hardhat run contracts/scripts/deploy.ts --config contracts/hardhat.config.ts --network polygonAmoy",
+    "contracts:deploy:amoy:boost": "hardhat run contracts/scripts/deploy-queue-boost.ts --config contracts/hardhat.config.ts --network polygonAmoy"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",

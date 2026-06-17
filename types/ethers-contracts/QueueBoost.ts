@@ -6,7 +6,7 @@ import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, Typed
   
 
   export interface QueueBoostInterface extends Interface {
-    getFunction(nameOrSignature: "CREATOR_SHARE" | "PLATFORM_SHARE" | "boostPrice" | "buyBoost" | "creatorEarnings" | "crowdToken" | "owner" | "platformTreasury" | "playNext" | "playNextPrice" | "queueJumpPrice" | "renounceOwnership" | "tipCreator" | "transferOwnership" | "withdrawEarnings"): FunctionFragment;
+    getFunction(nameOrSignature: "CREATOR_SHARE" | "PLATFORM_SHARE" | "boostPrice" | "buyBoost" | "creatorEarnings" | "crowdToken" | "owner" | "platformTreasury" | "playNext" | "playNextPrice" | "queueJumpPrice" | "renounceOwnership" | "superPriorityPrice" | "tipCreator" | "transferOwnership" | "withdrawEarnings"): FunctionFragment;
 
     getEvent(nameOrSignatureOrTopic: "BoostPurchased" | "CreatorRewarded" | "EarningsWithdrawn" | "OwnershipTransferred" | "SongPromoted"): EventFragment;
 
@@ -22,6 +22,7 @@ encodeFunctionData(functionFragment: 'playNext', values: [BytesLike, BytesLike, 
 encodeFunctionData(functionFragment: 'playNextPrice', values?: undefined): string;
 encodeFunctionData(functionFragment: 'queueJumpPrice', values?: undefined): string;
 encodeFunctionData(functionFragment: 'renounceOwnership', values?: undefined): string;
+encodeFunctionData(functionFragment: 'superPriorityPrice', values?: undefined): string;
 encodeFunctionData(functionFragment: 'tipCreator', values: [AddressLike, BigNumberish]): string;
 encodeFunctionData(functionFragment: 'transferOwnership', values: [AddressLike]): string;
 encodeFunctionData(functionFragment: 'withdrawEarnings', values?: undefined): string;
@@ -38,6 +39,7 @@ decodeFunctionResult(functionFragment: 'playNext', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'playNextPrice', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'queueJumpPrice', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'renounceOwnership', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'superPriorityPrice', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'tipCreator', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'transferOwnership', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'withdrawEarnings', data: BytesLike): Result;
@@ -234,6 +236,14 @@ decodeFunctionResult(functionFragment: 'withdrawEarnings', data: BytesLike): Res
     
 
     
+    superPriorityPrice: TypedContractMethod<
+      [],
+      [bigint],
+      'view'
+    >
+    
+
+    
     tipCreator: TypedContractMethod<
       [creator: AddressLike, amount: BigNumberish, ],
       [void],
@@ -319,6 +329,11 @@ getFunction(nameOrSignature: 'renounceOwnership'): TypedContractMethod<
       [],
       [void],
       'nonpayable'
+    >;
+getFunction(nameOrSignature: 'superPriorityPrice'): TypedContractMethod<
+      [],
+      [bigint],
+      'view'
     >;
 getFunction(nameOrSignature: 'tipCreator'): TypedContractMethod<
       [creator: AddressLike, amount: BigNumberish, ],

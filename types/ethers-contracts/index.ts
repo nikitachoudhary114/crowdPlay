@@ -5,6 +5,6 @@ export type { CrowdMembership } from './CrowdMembership.js';
 export type { CrowdToken } from './CrowdToken.js';
 export type { QueueBoost } from './QueueBoost.js';
 export * as factories from './factories/index.js';
+export { CrowdToken__factory } from './factories/CrowdToken__factory.js';
 export { CrowdMembership__factory } from './factories/CrowdMembership__factory.js';
 export { QueueBoost__factory } from './factories/QueueBoost__factory.js';
-export { CrowdToken__factory } from './factories/CrowdToken__factory.js';

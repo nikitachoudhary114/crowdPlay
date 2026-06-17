@@ -30,6 +30,7 @@ export interface RoomStateDTO {
     maxQueueSize: number;
     voteCooldownSec: number;
     ownerId: string;
+    isActive: boolean;
   };
   queue: QueueItemDTO[];
   nowPlaying: QueueItemDTO | null;
@@ -67,7 +68,7 @@ export async function getRoomState(roomCode: string): Promise<RoomStateDTO | nul
     },
   });
 
-  if (!room) return null;
+  if (!room || !room.isActive) return null;
 
   const mapItem = (item: (typeof room.queueItems)[0]): QueueItemDTO => ({
     id: item.id,
@@ -97,6 +98,7 @@ export async function getRoomState(roomCode: string): Promise<RoomStateDTO | nul
       maxQueueSize: room.maxQueueSize,
       voteCooldownSec: room.voteCooldownSec,
       ownerId: room.ownerId,
+      isActive: room.isActive,
     },
     queue,
     nowPlaying: nowPlaying ? mapItem(nowPlaying) : null,
@@ -256,6 +258,13 @@ export async function applyBoost(params: {
 
   await applyBoostPlaybackEffect(params.roomId, params.queueItemId, params.type);
 
+  try {
+    const { getRedis } = await import("@/lib/redis");
+    await getRedis().del("governance:stats:v2");
+  } catch {
+    // cache optional
+  }
+
   return item;
 }
 
@@ -275,7 +284,7 @@ async function applyBoostPlaybackEffect(roomId: string, queueItemId: string, typ
 }
 
 /** Start playback when nothing is playing, only if the given item is first in queue. */
-async function startTopQueuedIfIdle(roomId: string, queueItemId: string) {
+export async function startTopQueuedIfIdle(roomId: string, queueItemId: string) {
   const currentPlaying = await prisma.queueItem.findFirst({
     where: { roomId, status: QueueItemStatus.PLAYING },
   });
@@ -311,6 +320,15 @@ async function startTopQueuedIfIdle(roomId: string, queueItemId: string) {
   });
 
   return topQueued;
+}
+
+/** Auto-start when room is idle and a new song lands in an empty queue. */
+export async function autoStartIfIdle(roomId: string, queueItemId: string) {
+  const playing = await prisma.queueItem.findFirst({
+    where: { roomId, status: QueueItemStatus.PLAYING },
+  });
+  if (playing) return null;
+  return startTopQueuedIfIdle(roomId, queueItemId);
 }
 
 /** Stop whatever is playing and immediately play the boosted item. */
@@ -425,6 +443,29 @@ export async function removeQueueItem(itemId: string) {
   return prisma.queueItem.update({
     where: { id: itemId },
     data: { status: QueueItemStatus.REMOVED },
+  });
+}
+
+export async function endRoom(roomId: string) {
+  await prisma.room.update({
+    where: { id: roomId },
+    data: { isActive: false, queueLocked: true },
+  });
+
+  const playing = await prisma.queueItem.findFirst({
+    where: { roomId, status: QueueItemStatus.PLAYING },
+  });
+  if (playing) {
+    await prisma.queueItem.update({
+      where: { id: playing.id },
+      data: { status: QueueItemStatus.QUEUED },
+    });
+  }
+
+  await prisma.playbackState.upsert({
+    where: { roomId },
+    create: { roomId, currentItemId: null, isPlaying: false, currentTime: 0 },
+    update: { currentItemId: null, isPlaying: false, currentTime: 0 },
   });
 }
 
