@@ -12,6 +12,10 @@ export function getSocket(): Socket {
     socket = io({
       path: "/api/socket",
       autoConnect: false,
+      transports: ["polling", "websocket"],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      timeout: 20_000,
     });
   }
   return socket;

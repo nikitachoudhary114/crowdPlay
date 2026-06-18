@@ -22,16 +22,46 @@ export function getIO(): Server | null {
   return globalForIo.crowdplayIo ?? io;
 }
 
+/** Strip quotes/newlines from Railway env vars; return a valid origin or true for same-origin. */
+function socketCorsOrigin(): string | boolean {
+  const raw = process.env.NEXTAUTH_URL;
+  if (!raw) return true;
+
+  const cleaned = raw.trim().replace(/^["']+|["']+$/g, "").replace(/[\r\n\t]/g, "");
+  try {
+    return new URL(cleaned).origin;
+  } catch {
+    console.warn("[socket] invalid NEXTAUTH_URL, allowing same-origin CORS");
+    return true;
+  }
+}
+
 export function initSocketServer(httpServer: HttpServer) {
+  const corsOrigin = socketCorsOrigin();
+  console.log("[socket] CORS origin:", corsOrigin);
+
   io = new Server(httpServer, {
-    cors: { origin: process.env.NEXTAUTH_URL ?? "*", methods: ["GET", "POST"] },
+    cors: {
+      origin: corsOrigin,
+      methods: ["GET", "POST"],
+      credentials: true,
+    },
     path: "/api/socket",
+    transports: ["polling", "websocket"],
+    allowEIO3: true,
+    pingInterval: 25_000,
+    pingTimeout: 20_000,
   });
   globalForIo.crowdplayIo = io;
+
+  io.engine.on("connection_error", (err) => {
+    console.error("[socket] connection error:", err.message, err.context);
+  });
 
   const roomUsers = new Map<string, Set<string>>();
 
   io.on("connection", (socket: Socket) => {
+    console.log("[socket] connected:", socket.id);
     socket.on("join-room", async ({ roomCode, userId, guestId }: { roomCode: string; userId?: string; guestId?: string }) => {
       const room = await prisma.room.findUnique({ where: { code: roomCode } });
       if (!room) {

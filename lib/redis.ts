@@ -38,7 +38,14 @@ export function getRedis(): Redis | MemoryRedis {
   if (redisClient) return redisClient;
 
   if (process.env.REDIS_URL) {
-    redisClient = new Redis(process.env.REDIS_URL);
+    const client = new Redis(process.env.REDIS_URL, {
+      maxRetriesPerRequest: 2,
+      connectTimeout: 10_000,
+    });
+    client.on("error", (err) => {
+      console.warn("[redis]", err.message);
+    });
+    redisClient = client;
   } else {
     redisClient = new MemoryRedis();
   }
